@@ -1,0 +1,28 @@
+(gdb) b * main + 178
+Breakpoint 1 at 0x80485d3
+(gdb) r 1 2 3
+Starting program: /home/user/level7/level7 1 2 3
+
+Breakpoint 1, 0x080485d3 in main ()
+(gdb) x/s $eax
+0x80486eb:	 "/home/user/level8/.pass"
+(gdb) i r
+eax            0x80486eb	134514411
+ecx            0xbffff830	-1073743824
+edx            0x80486e9	134514409
+ebx            0xb7fd0ff4	-1208152076
+esp            0xbffff600	0xbffff600
+ebp            0xbffff628	0xbffff628
+esi            0x0	0
+edi            0x0	0
+eip            0x80485d3	0x80485d3 <main+178>
+eflags         0x200246	[ PF ZF IF ID ]
+cs             0x73	115
+ss             0x7b	123
+ds             0x7b	123
+es             0x7b	123
+fs             0x0	0
+gs             0x33	51
+(gdb) x/s 0x80486e9
+0x80486e9:	 "r"
+
