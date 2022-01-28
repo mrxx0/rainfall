@@ -139,3 +139,15 @@ Dump of assembler code for function main:
    0x08048738 <+468>:	ret    
 End of assembler dump.
 
+malloc sur variable au lieu de structure.
+overflow sur le strdup qui permet d'activer la condition (test %eax %eax)
+ce qui donne acces a l'appel system avec /bin/sh 
+
+
+
+auth 
+service
+service
+login
+
+c542e581c5ba5162a85f767996e3247ed619ef6c6f7b76a59435545dc6259f8a
