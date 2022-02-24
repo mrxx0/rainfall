@@ -101,7 +101,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 PPPPPPPPPPPPPPPPPPPPP
 
 
-p reads 4096 bytes from STDIN and strcpy returns the first 20 bytes.
+p reads 4096 bytes from STDIN and strncpy returns the first 20 bytes.
 then pp calls strcpy on the return of p strncpy and it's non null terminated.
 
 This means that there is the possibility of exploiting strcpy with a buffer 
