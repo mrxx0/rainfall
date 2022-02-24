@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void o()
+{
+	system("/bin/sh");
+	exit(1);
+}
+
 void n()
 {
 	char str[512];

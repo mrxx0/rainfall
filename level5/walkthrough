@@ -43,7 +43,7 @@ Dump of assembler code for function o:
    0x080484bd <+25>:	call   0x8048390 <_exit@plt>
 End of assembler dump.
 
-We want to call is uncalled function to get access to the system call of /bin/sh
+We want to call this uncalled function to get access to the system call of /bin/sh
 To do that we want to use again the format string exploit.
 
 We know the address of o : 
@@ -182,7 +182,7 @@ A little too much isn't it?
 Fortunately for us there is a better solution in 2 steps :
 		   +3 +2 +1 +0 (Offset)
 o :		0x 08 04 84 a4
-got :	0x 00 00 00 00
+got :	   0x 00 00 00 00
 
 We first want to write  84 a4 the lowest bits first on GOT:
 
