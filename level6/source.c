@@ -1,12 +1,25 @@
+//gcc -fno-stack-protector -z execstack -Wl,-z,norelro
+
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
-void m(char *str)
+void		n()
 {
-	puts(str);
+	system("/bin/cat /home/user/level7/.pass");
 }
 
-int main (int argc, char **argv)
+void		m()
 {
-	char *str = malloc(sizeof(32));
+	puts("Nope");
+}
+
+void		main(int ac, char **av)
+{
+	char *str = (char *) malloc( 64 );
+    	void (*fun_ptr)(void) = malloc( 4 );
+
+	fun_ptr = &m;
+	strcpy(str, av[1]);
+	fun_ptr();
 }
