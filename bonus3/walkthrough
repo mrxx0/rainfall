@@ -1,0 +1,22 @@
+In this exercise we can see the binary reads a .pass file of end user.
+It opens and reads its content and stock it in the buffer.
+Then we send our argument to atoi to add a NULL bytes (\0) in the buffer.
+  movb   $0x0,0x59(%esp)
+  mov    0xc(%ebp),%eax			// arv[1]
+  add    $0x4,%eax
+  mov    (%eax),%eax
+  mov    %eax,(%esp)
+  call   0x8048430 <atoi@plt>		// return -> eax
+  movb   $0x0,0x18(%esp,%eax,1)		// 0x18($esp) = bufRead[eax]= 0x0 || eax est l'index dans bufRead
+
+The binary ends by comparing the buffer from the lecture of the .pass file and our argument.
+If the comparaison's result is equal to 0, it executes exec function with /bin/sh
+On the contrary, it prints the last char of the buffer '\n' and exits.
+So our only solution is to send a null byte, to force the first byte of the buffer into a null one.
+In the end, the binary compares a null string with a null argument.
+
+bonus3@RainFall:~$ ./bonus3 ""
+$ id
+uid=2013(bonus3) gid=2013(bonus3) euid=2014(end) egid=100(users) groups=2014(end),100(users),2013(bonus3)
+$ cat /home/user/end/.pass
+3321b6f81659f9a71c76616f606e4b50189cecfea611393d5d649f75e157353c
