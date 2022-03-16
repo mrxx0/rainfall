@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void		p()
+char				*p()
 {
 	char			str[64];
 	unsigned int	ret;
@@ -21,10 +21,10 @@ void		p()
 		exit(1);
 	}
 	puts(str);
-	strdup(str);
+	return (strdup(str));
 }
 
-void		main()
+int				main()
 {
 	p();
 }
