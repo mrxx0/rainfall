@@ -98,7 +98,12 @@ So the goal is to set this variable from the auth structure, but there is no pla
 we can set it.
 And the condition always checks at the same address.
 So if we set the structure then we free it.
-And if we send a big enough strdup, the address will be greater than 0!
+By calling service strdup allocates to the first available memory space (the one 
+from 'auth').
+The check is always made at the same address, because of the bad code the binary
+checks if auth->auth exists but it has been freed. Instead in memory at this
+specific place there is the strdup from service so the condition is passed and we
+can login as level9.
 
 level8@RainFall:~$ ./level8 
 (nil), (nil) 
