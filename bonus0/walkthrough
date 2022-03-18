@@ -188,3 +188,21 @@ gdb) x/100x 0xbfffe690 - 100
 0xbfffe69c:	0x41414141	0x41414141	0x41414141	0x41414141
 0xbfffe6ac:	0x41414141	0x00616141	0x00000000	0x00000000
 0xbfffe6bc:	0x00000000	0x00000000	0x00000000	0x00000000
+
+
+*******************************************
+
+
+
+S1 est remplie par strncpy qui copie 20 caracteres depuis la lecture du read de 4096.
+strncpy ne copie pas de \0 dans S1 qui est donc vulnerable a un overflow.
+Pareil pour S2.
+
+Exemple : S1 fait 40 de taille donc si le buffer de read contient plus de 20 caracteres sans \0
+ils seront alors copies et s1 sera remplie.
+
+On peut donc mettre plus de 42 caracteres et ainsi avoir le controle sur EIP.
+Pour exploiter ce binaire, on envoie dans S1 des NOP suivi d'un shellcode
+Ensuite il suffit de remplir le buffer de S2
+
+
