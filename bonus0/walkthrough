@@ -198,7 +198,7 @@ S1 est remplie par strncpy qui copie 20 caracteres depuis la lecture du read de 
 strncpy ne copie pas de \0 dans S1 qui est donc vulnerable a un overflow.
 Pareil pour S2.
 
-Exemple : S1 fait 40 de taille donc si le buffer de read contient plus de 20 caracteres sans \0
+Exemple : S1 fait 40 de taille donc si le buffer de read contient plus de 20 caracteres (strcpy ne copie que 20 char) sans \0
 ils seront alors copies et s1 sera remplie.
 
 On peut donc mettre plus de 42 caracteres et ainsi avoir le controle sur EIP.
